@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>VetScan Lab — CMV La Serena</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f0;color:#1a1a1a;min-height:100vh}
+  .top-bar{background:#0c4a7a;color:#fff;padding:14px 20px}
+  .top-bar h1{font-size:16px;font-weight:500}
+  .top-bar span{font-size:12px;opacity:0.7}
+  .container{max-width:680px;margin:0 auto;padding:20px 16px}
+  .card{background:#fff;border-radius:12px;border:0.5px solid #e0e0d8;padding:16px 18px;margin-bottom:16px}
+  .section-title{font-size:13px;font-weight:500;color:#555;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.04em}
+  .drop-zone{border:2px dashed #c5c5bb;border-radius:12px;padding:40px 20px;text-align:center;cursor:pointer;background:#fafaf7}
+  .drop-icon{font-size:48px;margin-bottom:12px}
+  .drop-title{font-size:16px;font-weight:500;margin-bottom:6px}
+  .drop-sub{font-size:13px;color:#888}
+  .preview-img{width:100%;border-radius:10px;max-height:350px;object-fit:contain;background:#f0f0ea;display:block}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:8px;border:0.5px solid #ccc;background:#fff;font-size:14px;cursor:pointer;color:#1a1a1a;font-family:inherit}
+  .btn-primary{background:#0c4a7a;color:#fff;border:none;font-weight:500}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+  .badge{display:inline-block;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:500}
+  .badge-blue{background:#ddeeff;color:#0c4a7a}
+  .badge-green{background:#e6f4dc;color:#2e6b10}
+  .badge-row{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px}
+  label.field-label{font-size:12px;color:#777;display:block;margin-bottom:3px}
+  input[type=text]{width:100%;padding:8px 10px;border:0.5px solid #ddd;border-radius:6px;font-size:14px;font-family:inherit;background:#fff}
+  input[type=text]:focus{outline:none;border-color:#0c4a7a}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:6px 8px;font-size:11px;color:#888;border-bottom:0.5px solid #eee;font-weight:500;text-transform:uppercase}
+  td{padding:5px 8px;border-bottom:0.5px solid #f0f0ea}
+  td input{width:80px;padding:4px 6px;border:0.5px solid #ddd;border-radius:4px;font-size:13px;text-align:right;font-family:inherit}
+  .sec-row td{background:#f8f8f4;font-size:11px;font-weight:500;color:#666;text-transform:uppercase;letter-spacing:0.04em;padding:6px 8px 3px}
+  .out-range{color:#c0392b;font-weight:500}
+  .tag-out{display:inline-block;padding:1px 6px;border-radius:8px;font-size:10px;background:#fde8e8;color:#c0392b;margin-left:6px}
+  .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .error-msg{color:#c0392b;font-size:13px;padding:10px 14px;background:#fde8e8;border-radius:8px;margin-top:10px}
+  .tonal-row{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  .tonal-item{display:flex;align-items:center;gap:6px;font-size:13px}
+  .tonal-item input{width:60px}
+  .nak-row{font-size:13px;padding:6px 8px;color:#555}
+  @media(max-width:480px){.grid2{grid-template-columns:1fr}.btn-row{flex-direction:column}.btn{justify-content:center}}
+  #step-upload,#step-preview,#step-review{display:none}
+  .active{display:block!important}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>VetScan Lab — CMV La Serena</h1>
+  <span>Llenado automático de informes</span>
+</div>
+
+<div class="container">
+
+  <div id="step-upload" class="active">
+    <div class="card">
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <div class="drop-icon">📷</div>
+        <div class="drop-title">Toca para fotografiar o seleccionar</div>
+        <div class="drop-sub">Resultado HM5 (Hemograma) o VS2 (Perfil Bioquímico)</div>
+      </div>
+      <input type="file" id="file-input" accept="image/*" capture="environment" style="display:none" onchange="handleFile(this.files[0])"/>
+    </div>
+  </div>
+
+  <div id="step-preview">
+    <div class="card">
+      <img id="preview-img" class="preview-img" alt="Resultado"/>
+      <div id="error-msg" class="error-msg" style="display:none"></div>
+      <div class="btn-row">
+        <button class="btn" onclick="reset()">Cambiar imagen</button>
+        <button class="btn btn-primary" id="btn-analyze" onclick="analyze()">
+          <span id="btn-text">Extraer con IA ✦</span>
+          <span id="btn-spinner" class="spinner" style="display:none"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="step-review">
+    <div class="badge-row" id="badge-row"></div>
+    <div class="card">
+      <div class="section-title">Datos del paciente</div>
+      <div class="grid2">
+        <div><label class="field-label">Nombre</label><input type="text" id="p-nombre"/></div>
+        <div><label class="field-label">Edad</label><input type="text" id="p-edad"/></div>
+        <div><label class="field-label">Sexo</label><input type="text" id="p-sexo"/></div>
+        <div><label class="field-label">Tutor</label><input type="text" id="p-tutor"/></div>
+        <div><label class="field-label">N° Ficha</label><input type="text" id="p-ficha"/></div>
+        <div><label class="field-label">Fecha</label><input type="text" id="p-fecha"/></div>
+        <div><label class="field-label">M.V. Solicit.</label><input type="text" id="p-mv"/></div>
+        <div><label class="field-label">Clín. Solicit.</label><input type="text" id="p-clin"/></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title" id="table-title">Resultados</div>
+      <table id="results-table">
+        <thead><tr><th>Parámetro</th><th style="text-align:right">Resultado</th><th>Unidad</th><th>Valores normales</th></tr></thead>
+        <tbody id="results-body"></tbody>
+      </table>
+      <div id="nak-row" class="nak-row" style="display:none"></div>
+      <div id="tonal-row" style="display:none;padding:10px 8px">
+        <span style="font-size:13px;font-weight:500;margin-right:12px">Tonalidad del suero:</span>
+        <div class="tonal-row">
+          <div class="tonal-item">HEM <input type="text" id="t-HEM" value="0"/></div>
+          <div class="tonal-item">LIP <input type="text" id="t-LIP" value="0"/></div>
+          <div class="tonal-item">ICT <input type="text" id="t-ICT" value="0"/></div>
+        </div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" onclick="reset()">Nueva foto</button>
+      <button class="btn" onclick="goPreview()">Ver imagen</button>
+      <button class="btn btn-primary" onclick="printReport()">Imprimir / PDF</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const TEMPLATES = {
+  "Canino-Hemograma": {
+    serieRoja: [
+      {key:"ERITROCITOS",label:"Eritrocitos",unidad:"mill/μL",ref:"5.5 - 8.5"},
+      {key:"HEMOGLOBINA",label:"Hemoglobina",unidad:"g/dL",ref:"12 - 18"},
+      {key:"HEMATOCRITO",label:"Hematocrito",unidad:"%",ref:"37 - 55"},
+      {key:"VCM",label:"VCM",unidad:"fL",ref:"60 - 77"},
+      {key:"HCM",label:"HCM",unidad:"pg",ref:"19.5 - 24.5"},
+      {key:"CHCM",label:"CHCM",unidad:"g/dL",ref:"31 - 39"},
+      {key:"RDWc",label:"RDWc",unidad:"17.5%",ref:"14 - 20"},
+      {key:"RDWs",label:"RDWs",unidad:"fL",ref:"-"}
+    ],
+    serieBlanca: [
+      {key:"LEUCOCITOS",label:"Leucocitos",unidad:"mil/μL",ref:"3.5 - 20.7"},
+      {key:"LINFOCITOS_ABS",label:"Linfocitos",unidad:"mil/μL",ref:"0.83 - 9.1"},
+      {key:"MONOCITOS_ABS",label:"Monocitos",unidad:"mil/μL",ref:"0.09 - 1.21"},
+      {key:"NEUTROFILOS_ABS",label:"Neutrófilos",unidad:"mil/μL",ref:"1.63 - 13.37"},
+      {key:"EOSINOFILOS_ABS",label:"Eosinófilos",unidad:"mil/μL",ref:"0.02 - 0.49"},
+      {key:"BASOFILOS_ABS",label:"Basófilos",unidad:"mil/μL",ref:"0 - 0.2"}
+    ],
+    relativos: [
+      {key:"LINFOCITOS_REL",label:"Linfocitos",unidad:"%"},
+      {key:"MONOCITOS_REL",label:"Monocitos",unidad:"%"},
+      {key:"NEUTROFILOS_REL",label:"Neutrófilos",unidad:"%"},
+      {key:"EOSINOFILOS_REL",label:"Eosinófilos",unidad:"%"},
+      {key:"BASOFILOS_REL",label:"Basófilos",unidad:"%"}
+    ],
+    plaquetas: [
+      {key:"PLAQUETAS",label:"Plaquetas",unidad:"miles/μL",ref:"125 - 618"},
+      {key:"VPM",label:"VPM",unidad:"fL",ref:"8.6 - 14.9"},
+      {key:"PCT",label:"PCT",unidad:"%"},
+      {key:"PDWc",label:"PDWc",unidad:"%"},
+      {key:"PDWs",label:"PDWs",unidad:"fL"}
+    ]
+  },
+  "Felino-Hemograma": {
+    serieRoja: [
+      {key:"ERITROCITOS",label:"Eritrocitos",unidad:"mill/μL",ref:"7.7 - 12.8"},
+      {key:"HEMOGLOBINA",label:"Hemoglobina",unidad:"g/dL",ref:"10 - 17"},
+      {key:"HEMATOCRITO",label:"Hematocrito",unidad:"%",ref:"33.7 - 55.4"},
+      {key:"VCM",label:"VCM",unidad:"fL",ref:"35 - 52"},
+      {key:"HCM",label:"HCM",unidad:"pg",ref:"10 - 16.9"},
+      {key:"CHCM",label:"CHCM",unidad:"g/dL",ref:"31 - 39"},
+      {key:"RDWc",label:"RDWc",unidad:"17.5%",ref:"18.3 - 24.1"},
+      {key:"RDWs",label:"RDWs",unidad:"fL",ref:"-"}
+    ],
+    serieBlanca: [
+      {key:"LEUCOCITOS",label:"Leucocitos",unidad:"mil/μL",ref:"3.5 - 20.7"},
+      {key:"LINFOCITOS_ABS",label:"Linfocitos",unidad:"mil/μL",ref:"0.83 - 9.1"},
+      {key:"MONOCITOS_ABS",label:"Monocitos",unidad:"mil/μL",ref:"0.09 - 1.21"},
+      {key:"NEUTROFILOS_ABS",label:"Neutrófilos",unidad:"mil/μL",ref:"1.63 - 13.37"},
+      {key:"EOSINOFILOS_ABS",label:"Eosinófilos",unidad:"mil/μL",ref:"0.02 - 0.49"},
+      {key:"BASOFILOS_ABS",label:"Basófilos",unidad:"mil/μL",ref:"0 - 0.2"}
+    ],
+    relativos: [
+      {key:"LINFOCITOS_REL",label:"Linfocitos",unidad:"%"},
+      {key:"MONOCITOS_REL",label:"Monocitos",unidad:"%"},
+      {key:"NEUTROFILOS_REL",label:"Neutrófilos",unidad:"%"},
+      {key:"EOSINOFILOS_REL",label:"Eosinófilos",unidad:"%"},
+      {key:"BASOFILOS_REL",label:"Basófilos",unidad:"%"}
+    ],
+    plaquetas: [
+      {key:"PLAQUETAS",label:"Plaquetas",unidad:"miles/μL",ref:"125 - 618"},
+      {key:"VPM",label:"VPM",unidad:"fL",ref:"8.6 - 14.9"},
+      {key:"PCT",label:"PCT",unidad:"%"},
+      {key:"PDWc",label:"PDWc",unidad:"%"},
+      {key:"PDWs",label:"PDWs",unidad:"fL"}
+    ]
+  },
+  "Canino-Perfil Bioquímico": {
+    parametros: [
+      {key:"ALBUMINA",label:"Albúmina",unidad:"g/dL",ref:"2.5 - 4.4"},
+      {key:"FOSFATASA_ALC",label:"Fosfatasa Alc.",unidad:"U/L",ref:"20 - 150"},
+      {key:"ALT",label:"ALT",unidad:"U/L",ref:"10 - 118"},
+      {key:"AMILASA",label:"Amilasa",unidad:"U/L",ref:"200 - 1200"},
+      {key:"BILIRRUBINA_TOT",label:"Bilirrubina Total",unidad:"mg/dL",ref:"0.1 - 0.6"},
+      {key:"BUN",label:"BUN",unidad:"mg/dL",ref:"7 - 25"},
+      {key:"UREA",label:"Urea",unidad:"mg/dL",ref:"15 - 45"},
+      {key:"CREA",label:"Creatinina",unidad:"mg/dL",ref:"0.3 - 1.4"},
+      {key:"FOSFORO",label:"Fósforo",unidad:"mg/dL",ref:"2.9 - 6.6"},
+      {key:"CALCIO",label:"Calcio",unidad:"mg/dL",ref:"8.6 - 11.8"},
+      {key:"SODIO",label:"Sodio",unidad:"mmol/L",ref:"138 - 160"},
+      {key:"POTASIO",label:"Potasio",unidad:"mmol/L",ref:"3.7 - 5.8"},
+      {key:"GLUCOS",label:"Glucosa",unidad:"mg/dL",ref:"60 - 110"},
+      {key:"PROTEINAS_TOT",label:"Proteínas Tot.",unidad:"g/dL",ref:"5.4 - 8.2"},
+      {key:"GLOBULINAS",label:"Globulinas",unidad:"g/dL",ref:"2.3 - 5.2"}
+    ]
+  },
+  "Felino-Perfil Bioquímico": {
+    parametros: [
+      {key:"ALBUMINA",label:"Albúmina",unidad:"g/dL",ref:"2.2 - 4.4"},
+      {key:"FOSFATASA_ALC",label:"Fosfatasa Alc.",unidad:"U/L",ref:"20 - 150"},
+      {key:"ALT",label:"ALT",unidad:"U/L",ref:"10 - 90"},
+      {key:"AMILASA",label:"Amilasa",unidad:"U/L",ref:"300 - 1100"},
+      {key:"BILIRRUBINA_TOT",label:"Bilirrubina Total",unidad:"mg/dL",ref:"0.1 - 0.6"},
+      {key:"BUN",label:"BUN",unidad:"mg/dL",ref:"10 - 30"},
+      {key:"UREA",label:"Urea",unidad:"mg/dL",ref:"15 - 45"},
+      {key:"CREA",label:"Creatinina",unidad:"mg/dL",ref:"0.3 - 2.1"},
+      {key:"FOSFORO",label:"Fósforo",unidad:"mg/dL",ref:"3.4 - 8.5"},
+      {key:"CALCIO",label:"Calcio",unidad:"mg/dL",ref:"8.0 - 11.8"},
+      {key:"SODIO",label:"Sodio",unidad:"mmol/L",ref:"142 - 154"},
+      {key:"POTASIO",label:"Potasio",unidad:"mmol/L",ref:"3.7 - 5.8"},
+      {key:"GLUCOS",label:"Glucosa",unidad:"mg/dL",ref:"70 - 150"},
+      {key:"PROTEINAS_TOT",label:"Proteínas Tot.",unidad:"g/dL",ref:"5.4 - 8.2"},
+      {key:"GLOBULINAS",label:"Globulinas",unidad:"g/dL",ref:"1.5 - 5.7"}
+    ]
+  }
+};
+
+let currentImage=null, currentTemplate=null, currentVals={};
+
+function show(id){["step-upload","step-preview","step-review"].forEach(s=>document.getElementById(s).classList.remove("active"));document.getElementById(id).classList.add("active");}
+function handleFile(file){if(!file)return;const r=new FileReader();r.onload=e=>{currentImage=e.target.result;document.getElementById("preview-img").src=currentImage;show("step-preview");hideError();};r.readAsDataURL(file);}
+function reset(){currentImage=null;currentTemplate=null;currentVals={};document.getElementById("file-input").value="";show("step-upload");}
+function goPreview(){show("step-preview");}
+function hideError(){document.getElementById("error-msg").style.display="none";}
+function showError(msg){const el=document.getElementById("error-msg");el.textContent=msg;el.style.display="block";}
+function isOut(val,ref){if(!val||!ref||ref==="-")return false;const n=parseFloat(val);if(isNaN(n))return false;const p=ref.split("-").map(s=>parseFloat(s.trim()));if(p.length!==2||isNaN(p[0])||isNaN(p[1]))return false;return n<p[0]||n>p[1];}
+
+async function analyze(){
+  if(!currentImage)return;
+  const btn=document.getElementById("btn-analyze");
+  document.getElementById("btn-text").textContent="Analizando…";
+  document.getElementById("btn-spinner").style.display="inline-block";
+  btn.disabled=true; hideError();
+  try{
+    const base64=currentImage.split(",")[1];
+    const mediaType=currentImage.split(";")[0].split(":")[1];
+    const resp=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imageBase64:base64,mediaType})});
+    const data=await resp.json();
+    if(data.error)throw new Error(data.error);
+    buildReview(data);
+  }catch(e){
+    showError("No se pudo procesar. Intenta con mejor iluminación o encuadre más ajustado.");
+  }finally{
+    btn.disabled=false;
+    document.getElementById("btn-text").textContent="Extraer con IA ✦";
+    document.getElementById("btn-spinner").style.display="none";
+  }
+}
+
+function buildReview(data){
+  const especie=data.especie||"Canino";
+  const tipo=data.tipo||"Hemograma";
+  const key=especie+"-"+tipo;
+  currentTemplate={especie,tipo,key};
+  currentVals=data.valores||{};
+
+  document.getElementById("badge-row").innerHTML=`<span class="badge badge-blue">${especie}</span><span class="badge badge-green">${tipo}</span><span style="font-size:12px;color:#888;margin-left:auto">Verifica y corrige los valores</span>`;
+
+  const p=data.paciente||{};
+  ["nombre","edad","sexo","tutor","ficha","fecha"].forEach(k=>{const el=document.getElementById("p-"+k);if(el)el.value=p[k]||"";});
+  document.getElementById("p-mv").value=p.mvSolicit||"";
+  document.getElementById("p-clin").value=p.clinSolicit||"";
+  document.getElementById("table-title").textContent="Resultados — "+tipo;
+
+  const tmpl=TEMPLATES[key];
+  const tbody=document.getElementById("results-body");
+  tbody.innerHTML="";
+
+  const addSection=(label,fields)=>{
+    const sr=document.createElement("tr");sr.className="sec-row";
+    sr.innerHTML=`<td colspan="4">${label}</td>`;tbody.appendChild(sr);
+    fields.forEach(p=>{
+      const v=currentVals[p.key]||"";
+      const out=p.ref?isOut(v,p.ref):false;
+      const tr=document.createElement("tr");
+      tr.innerHTML=`<td>${p.label}</td>
+        <td><input type="text" id="v-${p.key}" value="${v}" class="${out?"out-range":""}" onchange="currentVals['${p.key}']=this.value;updateNaK()"/></td>
+        <td style="color:#999;font-size:12px">${p.unidad}</td>
+        <td style="font-size:12px;color:#888">${p.ref||""}${out?'<span class="tag-out">↑↓</span>':""}</td>`;
+      tbody.appendChild(tr);
+    });
+  };
+
+  if(tmpl.parametros){
+    addSection("PARÁMETROS",tmpl.parametros);
+    document.getElementById("nak-row").style.display="block";
+    document.getElementById("tonal-row").style.display="block";
+    ["HEM","LIP","ICT"].forEach(t=>{document.getElementById("t-"+t).value=currentVals[t]||"0";});
+    updateNaK();
+  }else{
+    addSection("SERIE ROJA",tmpl.serieRoja);
+    addSection("SERIE BLANCA — Absolutos",tmpl.serieBlanca);
+    addSection("RELATIVOS",tmpl.relativos);
+    addSection("PLAQUETAS",tmpl.plaquetas);
+    document.getElementById("nak-row").style.display="none";
+    document.getElementById("tonal-row").style.display="none";
+  }
+  show("step-review");
+}
+
+function updateNaK(){
+  const na=parseFloat(document.getElementById("v-SODIO")?.value);
+  const k=parseFloat(document.getElementById("v-POTASIO")?.value);
+  const nak=(!isNaN(na)&&!isNaN(k)&&k!==0)?(na/k).toFixed(1):"-";
+  document.getElementById("nak-row").innerHTML=`<b>R Na/K:</b> ${nak}`;
+}
+
+function printReport(){
+  const especie=currentTemplate?.especie||"";
+  const tipo=currentTemplate?.tipo||"";
+  const tmpl=TEMPLATES[currentTemplate?.key];
+  if(!tmpl)return;
+  const pn=id=>document.getElementById(id)?.value||"";
+  const pv=key=>{const el=document.getElementById("v-"+key);return el?el.value:currentVals[key]||"";};
+  const allFields=tmpl.parametros||[...(tmpl.serieRoja||[]),...(tmpl.serieBlanca||[]),...(tmpl.relativos||[]),...(tmpl.plaquetas||[])];
+  const rowsHtml=allFields.map(p=>{
+    const v=pv(p.key);const out=p.ref?isOut(v,p.ref):false;
+    return `<tr><td>${p.label}</td><td style="color:${out?"#c0392b":"inherit"};font-weight:${out?"bold":"normal"}">${v}</td><td>${p.unidad}</td><td>${p.ref||""}</td></tr>`;
+  }).join("");
+  const na=parseFloat(pv("SODIO"));const k=parseFloat(pv("POTASIO"));
+  const nak=(!isNaN(na)&&!isNaN(k)&&k!==0)?(na/k).toFixed(1):"-";
+  const w=window.open("","_blank");
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Informe</title>
+  <style>body{font-family:Arial,sans-serif;font-size:12px;padding:24px}h2{text-align:center;font-size:14px;margin-bottom:16px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:3px 20px;margin-bottom:14px}
+  table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:4px 8px}th{background:#f0f0f0;font-size:11px}
+  .footer{margin-top:24px;font-size:11px;color:#666;border-top:1px solid #ccc;padding-top:8px}</style>
+  </head><body>
+  <h2>Laboratorio Clínico CMV La Serena — ${especie} — ${tipo}</h2>
+  <div class="grid">
+    <div><b>Nombre:</b> ${pn("p-nombre")}</div><div><b>M.V. Solicit.:</b> ${pn("p-mv")}</div>
+    <div><b>Especie:</b> ${especie}</div><div><b>Clín. Solicit.:</b> ${pn("p-clin")}</div>
+    <div><b>Edad:</b> ${pn("p-edad")}</div><div><b>Fecha:</b> ${pn("p-fecha")}</div>
+    <div><b>Sexo:</b> ${pn("p-sexo")}</div><div><b>N° Ficha:</b> ${pn("p-ficha")}</div>
+    <div><b>Tutor:</b> ${pn("p-tutor")}</div>
+  </div>
+  <table><thead><tr><th>Parámetro</th><th>Resultado</th><th>Unidades</th><th>Valores normales (${especie})</th></tr></thead>
+  <tbody>${rowsHtml}</tbody></table>
+  ${tipo==="Perfil Bioquímico"?`<p style="margin-top:10px"><b>R Na/K:</b> ${nak}</p><p><b>Tonalidad del suero:</b> HEM ${document.getElementById("t-HEM")?.value||0} LIP ${document.getElementById("t-LIP")?.value||0} ICT ${document.getElementById("t-ICT")?.value||0}</p>`:""}
+  <div class="footer">MÉTODO: VetScan HM5 v2.5. MET. IMPEDANCIA VOLUMÉTRICA. Este examen debe ser interpretado por un médico veterinario.<br>
+  Tomás Pino — Médico Veterinario — Dpl. Patología Clínica — Thomas Alba Edison 1530 — contacto@laserenavet.cl — 512635630</div>
+  </body></html>`);
+  w.document.close();w.print();
+}
+
+document.getElementById("drop-zone").addEventListener("dragover",e=>e.preventDefault());
+document.getElementById("drop-zone").addEventListener("drop",e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f)handleFile(f);});
+</script>
+</body>
+</html>
